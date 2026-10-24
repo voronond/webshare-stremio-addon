@@ -233,35 +233,35 @@ describe("formatting description and name", () => {
       "The.Relic.1999.2160p.UHD.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-SWTYBLZ.mkv",
     );
     expect(results[0].description).toContain("💾 30 GB");
-    expect(results[0].name).toBe("Webshare ✅ 2160p");
+    expect(results[0].name).toBe("Webshare · 2160p · 30 GB");
 
     expect(results[1].description).toContain("👍 12 👎 0");
     expect(results[1].description).toContain(
       "The.Relic.1999.1080p.WEB-DL.DD5.1.H264-FGT.mkv",
     );
     expect(results[1].description).toContain("💾 180 MB");
-    expect(results[1].name).toBe("Webshare ✅ 1080p");
+    expect(results[1].name).toBe("Webshare · 1080p · 180 MB");
 
     expect(results[2].description).toContain("👍 10 👎 0");
     expect(results[2].description).toContain(
       "The.Relic.1999.1080p.BluRay.x264-[YTS.AG].mkv",
     );
     expect(results[2].description).toContain("💾 2 GB");
-    expect(results[2].name).toBe("Webshare ✅ 1080p");
+    expect(results[2].name).toBe("Webshare · 1080p · 2 GB");
 
     expect(results[3].description).toContain("👍 8 👎 0");
     expect(results[3].description).toContain(
       "The.Relic.1999.REMASTERED.1080p.BluRay.H264.AAC-RARBG.mp4",
     );
     expect(results[3].description).toContain("💾 2.5 GB");
-    expect(results[3].name).toBe("Webshare ✅ 1080p");
+    expect(results[3].name).toBe("Webshare · 1080p · 2.5 GB");
 
     expect(results[4].description).toContain("👍 5 👎 0");
     expect(results[4].description).toContain(
       "The.Relic.1999.720p.BluRay.x264-[YTS.AG].mkv",
     );
     expect(results[4].description).toContain("💾 1 GB");
-    expect(results[4].name).toBe("Webshare ✅ 720p");
+    expect(results[4].name).toBe("Webshare · 720p · 1 GB");
   });
 
   test("handles common TV show filename patterns", async () => {
@@ -319,28 +319,28 @@ describe("formatting description and name", () => {
       "Rolling.Rad.S01E01.2160p.UHD.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-SWTYBLZ.mkv",
     );
     expect(results[0].description).toContain("💾 30 GB");
-    expect(results[0].name).toBe("Webshare ✅ 2160p");
+    expect(results[0].name).toBe("Webshare · 2160p · 30 GB");
 
     expect(results[1].description).toContain("👍 10 👎 0");
     expect(results[1].description).toContain(
       "Rolling.Rad.S01E01.1080p.BluRay.x264-[YTS.AG].mkv",
     );
     expect(results[1].description).toContain("💾 2 GB");
-    expect(results[1].name).toBe("Webshare ✅ 1080p");
+    expect(results[1].name).toBe("Webshare · 1080p · 2 GB");
 
     expect(results[2].description).toContain("👍 8 👎 0");
     expect(results[2].description).toContain(
       "Rolling.Rad.S01E01.REMASTERED.1080p.BluRay.H264.AAC-RARBG.mp4",
     );
     expect(results[2].description).toContain("💾 2.5 GB");
-    expect(results[2].name).toBe("Webshare ✅ 1080p");
+    expect(results[2].name).toBe("Webshare · 1080p · 2.5 GB");
 
     expect(results[3].description).toContain("👍 5 👎 0");
     expect(results[3].description).toContain(
       "Rolling.Rad.S01E01.720p.BluRay.x264-[YTS.AG].mkv",
     );
     expect(results[3].description).toContain("💾 1 GB");
-    expect(results[3].name).toBe("Webshare ✅ 720p");
+    expect(results[3].name).toBe("Webshare · 720p · 1 GB");
   });
 
   test("handles filenames with language and subtitle information", async () => {

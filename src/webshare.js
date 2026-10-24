@@ -13,6 +13,7 @@ const { filesize } = require("filesize");
 const ptt = require("parse-torrent-title");
 const stringSimilarity = require("string-similarity");
 const { extractSeasonEpisode, extractLanguage } = require("./filenameParser");
+const { formatStreamPresentation } = require("./streamPresentation");
 const { url } = require("./env");
 
 const webshareRequest = async (method, endpoint, data, options) => {
@@ -140,34 +141,17 @@ const mapToStream = (item, matchScores, token) => {
   const weakMatch = matchScores.nameMatch > 0.3;
 
   return {
+    ...formatStreamPresentation(item, { strongMatch }),
     ident: item.ident,
     titleYear: matchScores.titleYear,
     itemTitleYear: matchScores.itemTitleYear,
     url: url + "getUrl/" + item.ident + "?token=" + token,
-    description:
-      item.name +
-      (item.language ? `\n🌐 ${item.language}` : "") +
-      `\n👍 ${item.posVotes} 👎 ${item.negVotes}` +
-      `\n💾 ${filesize(item.size)}`,
     match: matchScores.titleMatch,
     strongMatch,
     fulltextMatch,
     weakMatch,
     SeasonEpisode: item.SeasonEpisode,
     posVotes: item.posVotes,
-    // Add a check-mark if we get a strong match based on the parsed filename.
-    name: `Webshare${strongMatch ? " ✅" : ""} ${item.parsedTitle.resolution || ""}`,
-    behaviorHints: {
-      bingeGroup:
-        "WebshareStremio|" +
-        item.language +
-        "|" +
-        item.parsedTitle.resolution +
-        "|" +
-        item.parsedTitle.source,
-      videoSize: item.size,
-      filename: item.name,
-    },
     titles: matchScores.titles,
     parsedTitle: matchScores.cleanedItemTitle,
     protected: item.protected,
