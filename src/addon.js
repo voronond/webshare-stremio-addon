@@ -5,6 +5,18 @@ const { findShowInfo, findShowInfoInTmdb } = require("./meta");
 const express = require("express");
 const path = require("path");
 const landingTemplate = require("./html/landingTemplate");
+const {
+  AddonError,
+  classifyError,
+  getFailure,
+  isFailureCode,
+} = require("./errors");
+const {
+  recoveryStream,
+  recoveryMeta,
+  recoveryUrl,
+  helpCode,
+} = require("./recovery");
 const { host, url } = require("./env");
 const dev = process.argv.includes("--dev") == 1 ? "Dev" : "";
 
@@ -55,6 +67,15 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 const getToken = async (config) => {
+  if (
+    typeof config.login !== "string" ||
+    !config.login.trim() ||
+    ![config.saltedPassword, config.password].some(
+      (value) => typeof value === "string" && value,
+    )
+  ) {
+    throw new AddonError("invalid_credentials");
+  }
   if (config.saltedPassword) {
     return await webshare.login(config.login, config.saltedPassword);
   } else {
@@ -68,6 +89,12 @@ const getToken = async (config) => {
 
 builder.defineStreamHandler(async function (args) {
   try {
+    const code = helpCode(args.id);
+    if (code)
+      return {
+        streams: [recoveryStream(new AddonError(code))],
+        cacheMaxAge: 0,
+      };
     if (args.id.startsWith("tt")) {
       const info = await findShowInfo(args.type, args.id);
       if (info) {
@@ -100,12 +127,8 @@ builder.defineStreamHandler(async function (args) {
       return { streams: [] };
     }
   } catch (error) {
-    console.error(
-      "Error to get streams: ",
-      error.code,
-      error.message,
-      error.stack,
-    );
+    console.error("Stream request failed:", classifyError(error).code);
+    return { streams: [recoveryStream(error)], cacheMaxAge: 0 };
   }
   return { streams: [] };
 });
@@ -124,18 +147,16 @@ builder.defineCatalogHandler(async function (args) {
       cacheMaxAge: 60 * 60 * 1000,
     };
   } catch (error) {
-    console.error(
-      "Error while getting catalog items: ",
-      error.code,
-      error.message,
-      error.stack,
-    );
+    const failure = classifyError(error);
+    console.error("Catalog request failed:", failure.code);
+    return { metas: [recoveryMeta(failure.code, args.type)], cacheMaxAge: 0 };
   }
-  return { metas: [] };
 });
 
 builder.defineMetaHandler(async function (args) {
   try {
+    const code = helpCode(args.id);
+    if (code) return { meta: recoveryMeta(code, args.type), cacheMaxAge: 0 };
     if (args.id.startsWith("coffei.webshare:")) {
       const wsId = args.id.substring(16);
       const wsToken = await getToken(args.config || {});
@@ -155,14 +176,13 @@ builder.defineMetaHandler(async function (args) {
       return Promise.resolve({ meta: {} });
     }
   } catch (error) {
-    console.error(
-      "Error while getting meta: ",
-      error.code,
-      error.message,
-      error.stack,
-    );
+    const failure = classifyError(error);
+    console.error("Metadata request failed:", failure.code);
+    return {
+      meta: { ...recoveryMeta(failure.code, args.type), id: args.id },
+      cacheMaxAge: 0,
+    };
   }
-  return { meta: {} };
 });
 
 const app = express();
@@ -193,7 +213,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Add root route to serve the landing page
 app.get(["/configure", "/"], (req, res) => {
-  const landingHTML = landingTemplate(manifest);
+  const error = isFailureCode(req.query.reason)
+    ? getFailure(req.query.reason)
+    : undefined;
+  const landingHTML = landingTemplate(manifest, error);
   res.setHeader("content-type", "text/html");
   res.end(landingHTML);
 });
@@ -203,10 +226,23 @@ app.post("/configure", async (req, res) => {
   const { login, password, install } = req.body;
   let salted;
   let token;
+  let failure;
   try {
+    if (
+      typeof login !== "string" ||
+      !login.trim() ||
+      typeof password !== "string" ||
+      !password
+    ) {
+      throw new AddonError("invalid_credentials");
+    }
     salted = await webshare.saltPassword(login, password);
     token = await webshare.login(login, salted);
-  } catch (e) {}
+    if (!token) throw new AddonError("service_unavailable");
+  } catch (error) {
+    failure = classifyError(error);
+    console.error("Configuration failed:", failure.code);
+  }
   if (token) {
     const config = { login, saltedPassword: salted };
 
@@ -222,7 +258,10 @@ app.post("/configure", async (req, res) => {
       res.redirect(desktopUrl);
     }
   } else {
-    const landingHTML = landingTemplate(manifest, true, { login });
+    const landingHTML = landingTemplate(manifest, failure, {
+      login: typeof login === "string" ? login : "",
+    });
+    res.set("Cache-Control", "no-store");
     res.setHeader("content-type", "text/html");
     res.end(landingHTML);
   }
@@ -238,9 +277,7 @@ app.get("/getUrl/:ident", async (req, res) => {
       playbackUrl = new URL(url);
     } catch (e) {}
     if (!playbackUrl || !["http:", "https:"].includes(playbackUrl.protocol)) {
-      return res.status(502).set("Cache-Control", "no-store").json({
-        error: "The file is unavailable. Try another stream.",
-      });
+      throw new AddonError("service_unavailable");
     }
 
     const now = new Date();
@@ -255,13 +292,15 @@ app.get("/getUrl/:ident", async (req, res) => {
 
     res.redirect(url);
   } catch (error) {
-    console.error("Error in getUrl:", error.code);
+    const failure = classifyError(error);
+    console.error("Playback request failed:", failure.code);
     res
-      .status(error.code === "ETIMEDOUT" ? 504 : 502)
+      .status(failure.status)
       .set("Cache-Control", "no-store")
       .json({
-        error:
-          "Playback is temporarily unavailable. Try again or choose another stream.",
+        error: failure.message,
+        code: failure.code,
+        help: recoveryUrl(failure.code),
       });
   }
 });

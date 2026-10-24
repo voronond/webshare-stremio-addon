@@ -19,7 +19,10 @@ const file = {
     { name: "negative_votes", value: "0" },
   ],
 };
-const response = (children) => ({ statusCode: 200, body: { children } });
+const response = (children) => ({
+  statusCode: 200,
+  body: { children: [{ name: "status", value: "OK" }, ...children] },
+});
 
 beforeEach(() => jest.resetAllMocks());
 
@@ -47,7 +50,15 @@ test("preserves a genuine no-results response", async () => {
 test.each([
   { statusCode: 503, body: { children: [] } },
   { statusCode: 200, body: {} },
-  response([{ name: "status", value: "SEARCH_FATAL_1" }]),
+  {
+    statusCode: 200,
+    body: {
+      children: [
+        { name: "status", value: "FATAL" },
+        { name: "code", value: "UNKNOWN_ERROR" },
+      ],
+    },
+  },
 ])(
   "does not report upstream failures as a successful empty search",
   async (result) => {

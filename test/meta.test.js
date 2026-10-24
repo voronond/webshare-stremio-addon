@@ -137,3 +137,18 @@ describe("metadata provider recovery", () => {
     expect(needle).not.toHaveBeenCalled();
   });
 });
+
+test("malformed Cinemeta data is a service failure rather than no metadata", async () => {
+  needle.mockImplementation((method, url) =>
+    Promise.resolve(
+      response(
+        url.includes("themoviedb")
+          ? { movie_results: [] }
+          : { service: "unavailable" },
+      ),
+    ),
+  );
+  await expect(findShowInfo("movie", "tt123")).rejects.toMatchObject({
+    code: "service_unavailable",
+  });
+});

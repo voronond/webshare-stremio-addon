@@ -4,6 +4,7 @@ try {
 } catch (e) {}
 
 const { request } = require("./request");
+const { AddonError } = require("./errors");
 
 const getTmdbKey = async () => {
   const key = tmdbPrivateKey || (await require("freekeys")())?.tmdb_key;
@@ -27,7 +28,9 @@ const findInCinemeta = async (type, parsedId) => {
     `https://v3-cinemeta.strem.io/meta/${type}/${parsedId.id}.json`,
   );
   const meta = resp.body?.meta;
-  if (typeof meta?.name !== "string" || !meta.name.trim()) return null;
+  if (meta === null) return null;
+  if (typeof meta?.name !== "string" || !meta.name.trim())
+    throw new AddonError("service_unavailable");
   return {
     name: meta.name,
     originalName: null,
