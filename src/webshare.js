@@ -14,7 +14,8 @@ const ptt = require("parse-torrent-title");
 const stringSimilarity = require("string-similarity");
 const { extractSeasonEpisode, extractLanguage } = require("./filenameParser");
 const { formatStreamPresentation } = require("./streamPresentation");
-const { url } = require("./env");
+const { fileAvailability, isPlayableFile } = require("./fileAvailability");
+const { streamUrl } = require("./streamUrl");
 
 const webshareRequest = async (method, endpoint, data, options) => {
   try {
@@ -145,7 +146,7 @@ const mapToStream = (item, matchScores, token) => {
     ident: item.ident,
     titleYear: matchScores.titleYear,
     itemTitleYear: matchScores.itemTitleYear,
-    url: url + "getUrl/" + item.ident + "?token=" + token,
+    url: streamUrl(item.ident, token),
     match: matchScores.titleMatch,
     strongMatch,
     fulltextMatch,
@@ -231,31 +232,32 @@ const search = async (query, token) => {
   const children = readWebshareResponse(resp);
   const files = children.filter((el) => el.name == "file");
 
-  return files.map((el) => {
-    const ident = el.children.find((el) => el.name == "ident").value;
-    const size = el.children.find((el) => el.name == "size").value;
-    const posVotes = el.children.find(
-      (el) => el.name == "positive_votes",
-    ).value;
-    const negVotes = el.children.find(
-      (el) => el.name == "negative_votes",
-    ).value;
-    const name = el.children.find((el) => el.name == "name").value;
-    const password = el.children.find((el) => el.name == "password");
-    const img = el.children.find((el) => el.name == "img")?.value;
-    return {
-      ident,
-      name,
-      posVotes,
-      negVotes,
-      img,
-      size: parseInt(size, 10),
-      language: extractLanguage(name),
-      parsedTitle: ptt.parse(name),
-      SeasonEpisode: extractSeasonEpisode(name),
-      protected: password && password.value == "1",
-    };
-  });
+  return files
+    .filter((el) => isPlayableFile(fileAvailability(el.children)))
+    .map((el) => {
+      const ident = el.children.find((el) => el.name == "ident").value;
+      const size = el.children.find((el) => el.name == "size").value;
+      const posVotes = el.children.find(
+        (el) => el.name == "positive_votes",
+      ).value;
+      const negVotes = el.children.find(
+        (el) => el.name == "negative_votes",
+      ).value;
+      const name = el.children.find((el) => el.name == "name").value;
+      const img = el.children.find((el) => el.name == "img")?.value;
+      return {
+        ident,
+        name,
+        posVotes,
+        negVotes,
+        img,
+        size: parseInt(size, 10),
+        language: extractLanguage(name),
+        parsedTitle: ptt.parse(name),
+        SeasonEpisode: extractSeasonEpisode(name),
+        ...fileAvailability(el.children),
+      };
+    });
 };
 
 const webshare = {
@@ -299,6 +301,8 @@ const webshare = {
       { headers },
     );
     const children = readWebshareResponse(resp);
+    const availability = fileAvailability(children);
+    if (!isPlayableFile(availability)) return null;
 
     const size = requireValue(children, "size");
     if (!Number.isFinite(Number(size)) || Number(size) < 0)
@@ -307,7 +311,6 @@ const webshare = {
     const negVotes = valueOf(children, "negative_votes") || "0";
     const filename = requireValue(children, "name");
     const desc = valueOf(children, "description") || "";
-    const password = children.find((el) => el.name == "password");
     const stripe = children.find((el) => el.name == "stripe")?.value;
 
     const lang = extractLanguage(filename);
@@ -317,7 +320,7 @@ const webshare = {
       season != null && episode != null
         ? `S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`
         : "";
-    const name = `${title || filename} ${seasonEpisode}`;
+    const name = `${title || filename} ${seasonEpisode}`.trim();
 
     const description =
       filename +
@@ -337,8 +340,8 @@ const webshare = {
       size: parseInt(size, 10),
       language: lang,
       parsedTitle,
-      SeasonEpisode: extractSeasonEpisode(name),
-      protected: password && password.value == "1",
+      SeasonEpisode: extractSeasonEpisode(filename),
+      ...availability,
     };
   },
 
