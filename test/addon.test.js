@@ -58,6 +58,40 @@ describe("GET /getUrl/:ident", () => {
     );
   });
 
+  it.each([null, undefined, "invalid", "javascript:alert(1)"])(
+    "returns a bounded error for invalid playback URL %p",
+    async (playbackUrl) => {
+      webshare.getUrl.mockResolvedValueOnce(playbackUrl);
+      const res = await request(server)
+        .get(`/getUrl/${ident}?token=${token}`)
+        .timeout(1000)
+        .expect(502);
+      expect(res.headers.location).toBeUndefined();
+      expect(res.headers["cache-control"]).toBe("no-store");
+      expect(res.body.error).toContain("another stream");
+    },
+  );
+
+  it("ends the response when URL resolution throws", async () => {
+    webshare.getUrl.mockRejectedValueOnce(new Error("upstream offline"));
+    const res = await request(server)
+      .get(`/getUrl/${ident}?token=${token}`)
+      .timeout(1000)
+      .expect(502);
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.body.error).toContain("temporarily unavailable");
+  });
+
+  it("returns a gateway timeout when URL resolution times out", async () => {
+    webshare.getUrl.mockRejectedValueOnce(
+      Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }),
+    );
+    await request(server)
+      .get(`/getUrl/${ident}?token=${token}`)
+      .timeout(1000)
+      .expect(504);
+  });
+
   it("returns 404 for missing ident param", async () => {
     // Route requires :ident, so /getUrl/ should 404
     const res = await request(server).get(`/getUrl/`).expect(404);

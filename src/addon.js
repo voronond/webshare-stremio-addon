@@ -233,6 +233,15 @@ app.get("/getUrl/:ident", async (req, res) => {
   try {
     const ident = req.params.ident;
     const url = await webshare.getUrl(ident, req.query.token);
+    let playbackUrl;
+    try {
+      playbackUrl = new URL(url);
+    } catch (e) {}
+    if (!playbackUrl || !["http:", "https:"].includes(playbackUrl.protocol)) {
+      return res.status(502).set("Cache-Control", "no-store").json({
+        error: "The file is unavailable. Try another stream.",
+      });
+    }
 
     const now = new Date();
     // Expires 5 hours from now.
@@ -246,7 +255,14 @@ app.get("/getUrl/:ident", async (req, res) => {
 
     res.redirect(url);
   } catch (error) {
-    console.error("Error in getUrl: ", error.code, error.message, error.stack);
+    console.error("Error in getUrl:", error.code);
+    res
+      .status(error.code === "ETIMEDOUT" ? 504 : 502)
+      .set("Cache-Control", "no-store")
+      .json({
+        error:
+          "Playback is temporarily unavailable. Try again or choose another stream.",
+      });
   }
 });
 
