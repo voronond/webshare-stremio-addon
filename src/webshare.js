@@ -31,6 +31,11 @@ const webshareRequest = async (method, endpoint, data, options) => {
     throw error;
   }
 };
+const {
+  normalizePreferences,
+  withinLimits,
+  comparePreferredLanguage,
+} = require("./preferences");
 
 const headers = {
   "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -144,6 +149,7 @@ const mapToStream = (item, matchScores, token) => {
   return {
     ...formatStreamPresentation(item, { strongMatch }),
     ident: item.ident,
+    language: item.language,
     titleYear: matchScores.titleYear,
     itemTitleYear: matchScores.itemTitleYear,
     url: streamUrl(item.ident, token),
@@ -348,7 +354,8 @@ const webshare = {
   // improve movie query by adding year with movies
   // search localized names too
   // we could also combine multiple different queries to get better results
-  search: async (showInfo, token) => {
+  search: async (showInfo, token, inputPreferences = {}) => {
+    const preferences = normalizePreferences(inputPreferences);
     const queries = getQueries(showInfo);
 
     // Get all results from different queries
@@ -373,12 +380,16 @@ const webshare = {
     );
 
     return results
+      .filter((item) => withinLimits(item, preferences))
       .map((item) => {
         const matchScores = calculateMatchScores(item, showInfo);
         return mapToStream(item, matchScores, token);
       })
       .filter((item) => shouldIncludeResult(item, showInfo))
-      .sort(compareStreams)
+      .sort(
+        (a, b) =>
+          comparePreferredLanguage(a, b, preferences) || compareStreams(a, b),
+      )
       .slice(0, 100);
   },
 

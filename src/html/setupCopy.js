@@ -18,6 +18,33 @@ const copy = {
       "Automatic copying is unavailable. The link is selected; use your device's Copy action, or press Ctrl+C or Command+C.",
     backToSetup: "Return to setup",
     language: "Language",
+    preferredLanguage: "Preferred audio language",
+    maxResolution: "Maximum resolution",
+    maxFileSizeGb: "Maximum file size in GB (optional)",
+    preferredLanguageHelp:
+      "For movie and episode streams. Languages are inferred from filenames, not verified audio tracks. Other languages remain available as a fallback.",
+    maxResolutionHelp:
+      "Files with known resolution above this limit are hidden. Files with unknown resolution remain available.",
+    maxFileSizeGbHelp:
+      "Leave blank for no limit. Enter 0.1–1000 GB; 1 GB = 1,000,000,000 bytes. Files with unknown size remain available.",
+    invalidPreferences:
+      "Check your stream preferences. Choose a listed language and resolution, and a file size between 0.1 and 1000 GB, or leave size blank.",
+    preferenceRetry:
+      "Correct the highlighted settings and enter your password again.",
+    preferenceOptions: {
+      preferredLanguage: {
+        any: "No preference",
+        CZ: "Czech",
+        SK: "Slovak",
+        EN: "English",
+      },
+      maxResolution: {
+        any: "No limit",
+        "720p": "720p (HD)",
+        "1080p": "1080p (Full HD)",
+        "2160p": "2160p (4K)",
+      },
+    },
     intro: "Watch movies and series from Webshare in Stremio.",
     heading: "Connect your Webshare account",
     premium: "You need an active Webshare Premium account to stream files.",
@@ -68,6 +95,32 @@ const copy = {
       "Automatické kopírování není dostupné. Odkaz je označen; použijte funkci Kopírovat nebo klávesy Ctrl+C či Command+C.",
     backToSetup: "Zpět na nastavení",
     language: "Jazyk",
+    preferredLanguage: "Preferovaný jazyk zvuku",
+    maxResolution: "Maximální rozlišení",
+    maxFileSizeGb: "Maximální velikost souboru v GB (volitelné)",
+    preferredLanguageHelp:
+      "Pro zdroje filmů a epizod. Jazyky odhadujeme z názvů souborů, neověřujeme zvukové stopy. Ostatní jazyky zůstávají jako náhradní možnost.",
+    maxResolutionHelp:
+      "Soubory se známým rozlišením nad limitem skryjeme. Soubory s neznámým rozlišením zůstanou dostupné.",
+    maxFileSizeGbHelp:
+      "Prázdné pole znamená bez limitu. Zadejte 0,1–1000 GB; 1 GB = 1 000 000 000 bajtů. Soubory s neznámou velikostí zůstanou dostupné.",
+    invalidPreferences:
+      "Zkontrolujte nastavení zdrojů. Vyberte jazyk a rozlišení ze seznamu a velikost mezi 0,1 a 1000 GB, nebo nechte velikost prázdnou.",
+    preferenceRetry: "Opravte zvýrazněná nastavení a znovu zadejte heslo.",
+    preferenceOptions: {
+      preferredLanguage: {
+        any: "Bez preference",
+        CZ: "Čeština",
+        SK: "Slovenština",
+        EN: "Angličtina",
+      },
+      maxResolution: {
+        any: "Bez limitu",
+        "720p": "720p (HD)",
+        "1080p": "1080p (Full HD)",
+        "2160p": "2160p (4K)",
+      },
+    },
     intro: "Sledujte filmy a seriály z Webshare ve Stremiu.",
     heading: "Připojte svůj účet Webshare",
     premium:

@@ -70,6 +70,7 @@ a:hover {
   color: white;
 }
 .version,
+.field-help,
 .privacy {
   font-size: 0.875rem;
   color: #d1c5dd;
