@@ -5,6 +5,8 @@ try {
 
 const { request } = require("./request");
 const { AddonError } = require("./errors");
+const { createTTLCache } = require("./cache");
+const metadataCache = createTTLCache({ ttl: 5 * 60 * 1000, maxEntries: 500 });
 
 const getTmdbKey = async () => {
   const key = tmdbPrivateKey || (await require("freekeys")())?.tmdb_key;
@@ -103,7 +105,7 @@ const findInTmdb = async (type, parsedId, byImdb) => {
   };
 };
 
-const findShowInfo = async (type, id) => {
+const loadShowInfo = async (type, id) => {
   const parsedId = parseId(type, id);
   if (!parsedId) return null;
   try {
@@ -115,9 +117,22 @@ const findShowInfo = async (type, id) => {
   return findInCinemeta(type, parsedId);
 };
 
-const findShowInfoInTmdb = async (type, id) => {
+const loadShowInfoInTmdb = async (type, id) => {
   const parsedId = parseId(type, id);
   return parsedId ? findInTmdb(type, parsedId, false) : null;
 };
 
-module.exports = { findShowInfo, findShowInfoInTmdb };
+const findShowInfo = (type, id) =>
+  metadataCache.get(JSON.stringify(["imdb", type, id]), () =>
+    loadShowInfo(type, id),
+  );
+const findShowInfoInTmdb = (type, id) =>
+  metadataCache.get(JSON.stringify(["tmdb", type, id]), () =>
+    loadShowInfoInTmdb(type, id),
+  );
+
+module.exports = {
+  findShowInfo,
+  findShowInfoInTmdb,
+  clearMetadataCache: metadataCache.clear,
+};

@@ -1,3 +1,5 @@
+const { clearTokenCache } = require("../src/auth");
+beforeEach(() => clearTokenCache());
 const pkg = require("../package.json");
 const request = require("supertest");
 const express = require("express");
@@ -35,27 +37,13 @@ describe("GET /getUrl/:ident", () => {
     expect(res.headers.location).toBe(fakeUrl);
   });
 
-  it("sets correct caching headers", async () => {
+  it("does not cache credential-bound playback redirects", async () => {
     webshare.getUrl.mockResolvedValueOnce(fakeUrl);
-
-    const before = new Date();
     const res = await request(server)
       .get(`/getUrl/${ident}?token=${token}`)
       .expect(302);
-
-    const expires = new Date(res.headers["expires"]);
-    const lastModified = new Date(res.headers["last-modified"]);
-    const cacheControl = res.headers["cache-control"];
-
-    // Expires should be about 5 hours after last-modified
-    expect(Math.abs(expires - lastModified - 5 * 60 * 60 * 1000)).toBeLessThan(
-      2000,
-    ); // allow 2s drift
-    expect(Math.abs(lastModified - before)).toBeLessThan(5000); // allow 5s drift
-
-    expect(cacheControl).toBe(
-      "max-age=18000, must-revalidate, proxy-revalidate",
-    );
+    expect(res.headers["cache-control"]).toBe("private, no-store");
+    expect(res.headers.expires).toBeUndefined();
   });
 
   it.each([null, undefined, "invalid", "javascript:alert(1)"])(

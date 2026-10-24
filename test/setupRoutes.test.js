@@ -1,3 +1,5 @@
+const { clearTokenCache } = require("../src/auth");
+beforeEach(() => clearTokenCache());
 const request = require("supertest");
 const webshare = require("../src/webshare");
 const landingTemplate = require("../src/html/landingTemplate");

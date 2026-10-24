@@ -1,6 +1,7 @@
 const pkg = require("../package.json");
 const { addonBuilder, getRouter } = require("stremio-addon-sdk");
 const webshare = require("./webshare");
+const { withToken } = require("./auth");
 const { findShowInfo, findShowInfoInTmdb } = require("./meta");
 const express = require("express");
 const path = require("path");
@@ -97,27 +98,6 @@ const manifest = {
 
 const builder = new addonBuilder(manifest);
 
-const getToken = async (config) => {
-  if (
-    typeof config.login !== "string" ||
-    !config.login.trim() ||
-    ![config.saltedPassword, config.password].some(
-      (value) => typeof value === "string" && value,
-    )
-  ) {
-    throw new AddonError("invalid_credentials");
-  }
-  if (config.saltedPassword) {
-    return await webshare.login(config.login, config.saltedPassword);
-  } else {
-    const saltedPassword = await webshare.saltPassword(
-      config.login,
-      config.password,
-    );
-    return await webshare.login(config.login, saltedPassword);
-  }
-};
-
 builder.defineStreamHandler(async function (args) {
   try {
     const code = helpCode(args.id);
@@ -129,38 +109,33 @@ builder.defineStreamHandler(async function (args) {
     if (args.id.startsWith("tt")) {
       const info = await findShowInfo(args.type, args.id);
       if (info) {
-        const wsToken = await getToken(args.config || {});
-        const streams = await webshare.search(
-          info,
-          wsToken,
-          normalizePreferences(args.config),
+        const streams = await withToken(args.config || {}, (token) =>
+          webshare.search(info, token, normalizePreferences(args.config)),
         );
 
         return { streams: streams };
       }
     } else if (args.id.startsWith("coffei.webshare:")) {
       const wsId = args.id.substring(16);
-      const wsToken = await getToken(args.config || {});
-      const info = await webshare.getById(wsId, wsToken);
-      if (!isPlayableFile(info)) return { streams: [] };
-      return {
-        streams: [
-          {
-            ident: wsId,
-            ...formatStreamPresentation(info),
-            url: streamUrl(wsId, wsToken),
-          },
-        ],
-      };
+      return await withToken(args.config || {}, async (token) => {
+        const info = await webshare.getById(wsId, token);
+        if (!isPlayableFile(info)) return { streams: [] };
+        return {
+          streams: [
+            {
+              ident: wsId,
+              ...formatStreamPresentation(info),
+              url: streamUrl(wsId, token),
+            },
+          ],
+        };
+      });
     } else if (args.id.startsWith("tmdb:")) {
       const id = args.id.substring(5);
       const info = await findShowInfoInTmdb(args.type, id);
       if (info) {
-        const wsToken = await getToken(args.config || {});
-        const streams = await webshare.search(
-          info,
-          wsToken,
-          normalizePreferences(args.config),
+        const streams = await withToken(args.config || {}, (token) =>
+          webshare.search(info, token, normalizePreferences(args.config)),
         );
 
         return { streams: streams };
@@ -177,8 +152,9 @@ builder.defineStreamHandler(async function (args) {
 
 builder.defineCatalogHandler(async function (args) {
   try {
-    const wsToken = await getToken(args.config || {});
-    const streams = await webshare.directSearch(args.extra.search, wsToken);
+    const streams = await withToken(args.config || {}, (token) =>
+      webshare.directSearch(args.extra.search, token),
+    );
     return {
       metas: streams.filter(isPlayableFile).map((s) => ({
         id: `coffei.webshare:${s.ident}`,
@@ -186,7 +162,7 @@ builder.defineCatalogHandler(async function (args) {
         poster: s.img || new URL("mystatic/logo.png", url).toString(),
         type: args.type,
       })),
-      cacheMaxAge: 60 * 60 * 1000,
+      cacheMaxAge: 60 * 60,
     };
   } catch (error) {
     const failure = classifyError(error);
@@ -201,8 +177,9 @@ builder.defineMetaHandler(async function (args) {
     if (code) return { meta: recoveryMeta(code, args.type), cacheMaxAge: 0 };
     if (args.id.startsWith("coffei.webshare:")) {
       const wsId = args.id.substring(16);
-      const wsToken = await getToken(args.config || {});
-      const info = await webshare.getById(wsId, wsToken);
+      const info = await withToken(args.config || {}, (token) =>
+        webshare.getById(wsId, token),
+      );
       if (!isPlayableFile(info)) return { meta: {} };
       return Promise.resolve({
         meta: {
@@ -229,6 +206,12 @@ builder.defineMetaHandler(async function (args) {
 });
 
 const app = express();
+
+app.use((req, res, next) => {
+  if (req.path.includes("/stream/"))
+    res.set("Cache-Control", "private, no-store");
+  next();
+});
 
 // Add the Stremio router for handling addon endpoints - getRouter converts it to express routers
 app.use(getRouter(builder.getInterface()));
@@ -354,16 +337,7 @@ app.get("/getUrl/:ident", async (req, res) => {
       throw new AddonError("service_unavailable");
     }
 
-    const now = new Date();
-    // Expires 5 hours from now.
-    const expiration = new Date(now.getTime() + 5 * 60 * 60 * 1000);
-    res.set("Expires", expiration.toUTCString());
-    res.set("Last-Modified", now.toUTCString());
-    res.set(
-      "Cache-Control",
-      "max-age=18000, must-revalidate, proxy-revalidate",
-    );
-
+    res.set("Cache-Control", "private, no-store");
     res.redirect(url);
   } catch (error) {
     const failure = classifyError(error);
