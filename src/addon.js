@@ -216,7 +216,7 @@ app.get(["/configure", "/"], (req, res) => {
   const error = isFailureCode(req.query.reason)
     ? getFailure(req.query.reason)
     : undefined;
-  const landingHTML = landingTemplate(manifest, error);
+  const landingHTML = landingTemplate(manifest, error, {}, req.query.lang);
   res.setHeader("content-type", "text/html");
   res.end(landingHTML);
 });
@@ -258,9 +258,13 @@ app.post("/configure", async (req, res) => {
       res.redirect(desktopUrl);
     }
   } else {
-    const landingHTML = landingTemplate(manifest, failure, {
-      login: typeof login === "string" ? login : "",
-    });
+    const landingHTML = landingTemplate(
+      manifest,
+      failure,
+      req.body,
+      req.body.lang,
+      true,
+    );
     res.set("Cache-Control", "no-store");
     res.setHeader("content-type", "text/html");
     res.end(landingHTML);

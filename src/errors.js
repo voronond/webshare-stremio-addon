@@ -26,7 +26,7 @@ const failures = {
   service_unavailable: {
     title: "Service temporarily unavailable",
     message:
-      "A service is temporarily unavailable. Try again shortly or choose another stream. You do not need to change your password.",
+      "A service is temporarily unavailable. Try again shortly or choose another stream. If sign-in keeps failing, check your account at Webshare.cz.",
     status: 502,
   },
   file_missing: {
