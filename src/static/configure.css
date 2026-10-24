@@ -107,11 +107,13 @@ label {
 }
 input,
 select,
+textarea,
 button {
   font: inherit;
 }
 input:not([type="checkbox"]):not([type="hidden"]),
-select {
+select,
+textarea {
   width: 100%;
   min-height: 3rem;
   padding: 0.6rem 0.8rem;
@@ -123,7 +125,8 @@ select {
 input[aria-invalid="true"] {
   border: 2px solid #ffacbc;
 }
-button {
+button,
+.button {
   min-height: 2.75rem;
   padding: 0.65rem 1rem;
   border: 1px solid transparent;
@@ -133,15 +136,18 @@ button {
   font-weight: 700;
   cursor: pointer;
 }
-button:hover {
+button:hover,
+.button:hover {
   background: #d5aff0;
 }
-button.secondary {
+button.secondary,
+.button.secondary {
   color: #f7f5fa;
   border-color: #ac95bf;
   background: transparent;
 }
-button.secondary:hover {
+button.secondary:hover,
+.button.secondary:hover {
   background: #40304f;
 }
 button:disabled {
@@ -157,7 +163,8 @@ button:disabled {
   flex-wrap: wrap;
   gap: 0.75rem;
 }
-.actions button {
+.actions button,
+.actions .button {
   flex: 1 1 13rem;
 }
 :focus-visible {
@@ -195,4 +202,21 @@ button:disabled {
 }
 [hidden] {
   display: none !important;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+.installation-actions {
+  margin-top: 1.5rem;
+}
+textarea {
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+#copy-installation-link {
+  margin-top: 0.75rem;
 }

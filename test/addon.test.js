@@ -108,7 +108,7 @@ describe("POST /configure", () => {
     jest.clearAllMocks();
   });
 
-  it("salts password, logs in, and redirects with config if successful", async () => {
+  it("salts password, logs in, and offers installation links if successful", async () => {
     webshare.saltPassword.mockResolvedValueOnce(saltedPassword);
     webshare.login.mockResolvedValueOnce(token);
 
@@ -120,12 +120,12 @@ describe("POST /configure", () => {
     expect(webshare.saltPassword).toHaveBeenCalledWith(login, password);
     expect(webshare.login).toHaveBeenCalledWith(login, saltedPassword);
 
-    expect(res.status).toBe(302);
-    expect(res.headers.location).toMatch(/^stremio:\/\//);
+    expect(res.status).toBe(200);
+    expect(res.headers.location).toBeUndefined();
 
-    // Check config in redirect URL
-    const match = res.headers.location.match(
-      /stremio:\/\/[^/]+\/([^/]+)\/manifest\.json/,
+    // The handoff includes the verified config in an explicit Stremio action.
+    const match = res.text.match(
+      /href="stremio:\/\/[^/]+\/([^/]+)\/manifest\.json"/,
     );
     expect(match).toBeTruthy();
     const config = JSON.parse(decodeURIComponent(match[1]));
