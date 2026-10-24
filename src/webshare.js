@@ -1,5 +1,11 @@
 const { performance } = require("node:perf_hooks");
 const { request } = require("./request");
+const {
+  AddonError,
+  readWebshareResponse,
+  requireValue,
+  valueOf,
+} = require("./errors");
 const md5 = require("nano-md5");
 const sha1 = require("sha1");
 const formencode = require("form-urlencoded");
@@ -9,8 +15,23 @@ const stringSimilarity = require("string-similarity");
 const { extractSeasonEpisode, extractLanguage } = require("./filenameParser");
 const { url } = require("./env");
 
+const webshareRequest = async (method, endpoint, data, options) => {
+  try {
+    return await request(method, endpoint, data, options);
+  } catch (error) {
+    if (error.statusCode === 401) {
+      throw new AddonError(
+        /\/(login|salt)\/$/.test(endpoint)
+          ? "invalid_credentials"
+          : "auth_expired",
+      );
+    }
+    throw error;
+  }
+};
+
 const headers = {
-  content_type: "application/x-www-form-urlencoded; charset=UTF-8",
+  "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
   accept: "text/xml; charset=UTF-8",
 };
 
@@ -209,25 +230,21 @@ const compareStreams = (a, b) => {
 };
 
 const search = async (query, token) => {
-  console.log("Searching", query);
   const data = formencode({
     what: query,
     category: "video",
     limit: 100,
     wst: token,
   });
-  const resp = await request("post", "https://webshare.cz/api/search/", data, {
-    headers,
-  });
-  const children = resp.body?.children;
-  if (!Array.isArray(children))
-    throw new Error("Invalid Webshare search response.");
-  const status = children.find((el) => el.name === "status")?.value;
-  if (status && status !== "OK") {
-    const error = new Error("Webshare search is temporarily unavailable.");
-    error.code = status;
-    throw error;
-  }
+  const resp = await webshareRequest(
+    "post",
+    "https://webshare.cz/api/search/",
+    data,
+    {
+      headers,
+    },
+  );
+  const children = readWebshareResponse(resp);
   const files = children.filter((el) => el.name == "file");
 
   return files.map((el) => {
@@ -259,32 +276,30 @@ const search = async (query, token) => {
 
 const webshare = {
   saltPassword: async (user, password) => {
-    const saltResp = await request(
+    const saltResp = await webshareRequest(
       "post",
       "https://webshare.cz/api/salt/",
       formencode({ username_or_email: user }),
       { headers },
     );
-    const salt = saltResp.body.children.find((el) => el.name == "salt").value;
+    const salt = requireValue(readWebshareResponse(saltResp), "salt");
     return sha1(md5.crypt(password, salt));
   },
   login: async (user, saltedPassword) => {
-    console.log(`Logging in user ${user}`);
     const data = formencode({
       username_or_email: user,
       password: saltedPassword,
       keep_logged_in: 1,
     });
-    const resp = await request("post", "https://webshare.cz/api/login/", data, {
-      headers,
-    });
-    if (
-      resp.statusCode != 200 ||
-      resp.body.children.find((el) => el.name == "status").value != "OK"
-    ) {
-      throw Error("Cannot log in to Webshare.cz, invalid login credentials");
-    }
-    return resp.body.children.find((el) => el.name == "token").value;
+    const resp = await webshareRequest(
+      "post",
+      "https://webshare.cz/api/login/",
+      data,
+      {
+        headers,
+      },
+    );
+    return requireValue(readWebshareResponse(resp), "token");
   },
 
   directSearch: async (query, token) => {
@@ -293,19 +308,21 @@ const webshare = {
 
   getById: async (id, token) => {
     const data = formencode({ ident: id, wst: token });
-    const resp = await request(
+    const resp = await webshareRequest(
       "post",
       "https://webshare.cz/api/file_info/",
       data,
       { headers },
     );
-    const children = resp.body.children;
+    const children = readWebshareResponse(resp);
 
-    const size = children.find((el) => el.name == "size").value;
-    const posVotes = children.find((el) => el.name == "positive_votes").value;
-    const negVotes = children.find((el) => el.name == "negative_votes").value;
-    const filename = children.find((el) => el.name == "name").value;
-    const desc = children.find((el) => el.name == "description").value;
+    const size = requireValue(children, "size");
+    if (!Number.isFinite(Number(size)) || Number(size) < 0)
+      throw new AddonError("service_unavailable");
+    const posVotes = valueOf(children, "positive_votes") || "0";
+    const negVotes = valueOf(children, "negative_votes") || "0";
+    const filename = requireValue(children, "name");
+    const desc = valueOf(children, "description") || "";
     const password = children.find((el) => el.name == "password");
     const stripe = children.find((el) => el.name == "stripe")?.value;
 
@@ -385,20 +402,13 @@ const webshare = {
       force_https: 1,
       wst: token,
     });
-    const resp = await request(
+    const resp = await webshareRequest(
       "post",
       "https://webshare.cz/api/file_link/",
       data,
       { headers },
     );
-    const status = resp?.body?.children?.find(
-      (el) => el.name == "status",
-    )?.value;
-    if (status == "OK") {
-      return resp?.body?.children?.find((el) => el.name == "link")?.value; //url
-    } else {
-      return null;
-    }
+    return requireValue(readWebshareResponse(resp), "link");
   },
 };
 module.exports = webshare;

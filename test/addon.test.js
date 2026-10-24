@@ -145,7 +145,7 @@ describe("POST /configure", () => {
     expect(res.headers["content-type"]).toMatch(/text\/html/);
     expect(res.text).toMatch(/<html/i);
     expect(res.text).toMatch(new RegExp(login));
-    expect(res.text).toContain("Login credentials are incorrect.");
+    expect(res.text).toContain("temporarily unavailable");
   });
 
   it("renders landing page with error if saltPassword throws", async () => {
@@ -160,7 +160,7 @@ describe("POST /configure", () => {
     expect(res.headers["content-type"]).toMatch(/text\/html/);
     expect(res.text).toMatch(/<html/i);
     expect(res.text).toMatch(new RegExp(login));
-    expect(res.text).toContain("Login credentials are incorrect.");
+    expect(res.text).toContain("temporarily unavailable");
   });
 });
 
@@ -231,7 +231,7 @@ describe("Stream search handler", () => {
     expect(res.body.streams).toEqual([]);
   });
 
-  it("returns empty streams if webshare.search throws", async () => {
+  it("offers recovery if webshare.search throws", async () => {
     findShowInfo.mockResolvedValue(info);
     webshare.saltPassword.mockResolvedValueOnce(saltedPassword);
     webshare.login.mockResolvedValueOnce(wsToken);
@@ -243,10 +243,14 @@ describe("Stream search handler", () => {
       .expect(200);
 
     expect(res.body).toHaveProperty("streams");
-    expect(res.body.streams).toEqual([]);
+    expect(res.body.streams).toEqual([
+      expect.objectContaining({
+        externalUrl: expect.stringContaining("reason=service_unavailable"),
+      }),
+    ]);
   });
 
-  it("returns empty streams if webshare.login throws", async () => {
+  it("offers recovery if webshare.login throws", async () => {
     findShowInfo.mockResolvedValue(info);
     webshare.saltPassword.mockResolvedValueOnce(saltedPassword);
     webshare.login.mockRejectedValueOnce(new Error("fail"));
@@ -257,7 +261,11 @@ describe("Stream search handler", () => {
       .expect(200);
 
     expect(res.body).toHaveProperty("streams");
-    expect(res.body.streams).toEqual([]);
+    expect(res.body.streams).toEqual([
+      expect.objectContaining({
+        externalUrl: expect.stringContaining("reason=service_unavailable"),
+      }),
+    ]);
   });
 
   it("resturns a single stream for internal catalog items", async () => {

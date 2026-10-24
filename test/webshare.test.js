@@ -27,6 +27,7 @@ describe("search results are sorted", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file("1", "Morcle man 2024.avi", "600000", "1", "0"),
           file("2", "Moracle man 2024.avi", "600000", "1", "0"),
           file("3", "Miracle man 2024.avi", "600000", "1", "0"),
@@ -53,6 +54,7 @@ describe("search results are sorted", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           // these filename are parsed incorrectly by the parse-torrent-title
           file("1", "720p S01 E03 Morcle man.avi", "600000", "1", "0"),
           file("2", "720p S01 E03 Moracle man.avi", "600000", "1", "0"),
@@ -78,6 +80,7 @@ describe("search results are sorted", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file("1", "Miracle man 2024.avi", "600000", "4", "0"),
           file("2", "Miracle man 2024.avi", "600000", "0", "0"),
           file("3", "Miracle man 2024.avi", "600000", "1", "0"),
@@ -102,6 +105,7 @@ describe("search results are sorted", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file("1", "Miracle man 2024.avi", "600000", "4", "0"),
           file("2", "Miracle man 2024.avi", "1200000", "4", "0"),
           file("3", "Miracle man 2024.avi", "100000", "4", "0"),
@@ -128,6 +132,7 @@ describe("search results are sorted", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           // these filename are parsed incorrectly by the parse-torrent-title
           file("1", "720p S01 E03 Morcle man.avi", "600000", "1", "0"),
           file("2", "720p S01 E03 Moracle man.avi", "600000", "1", "0"),
@@ -180,6 +185,7 @@ describe("formatting description and name", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file(
             "1",
             "The.Relic.1999.1080p.BluRay.x264-[YTS.AG].mkv",
@@ -273,6 +279,7 @@ describe("formatting description and name", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file(
             "1",
             "Rolling.Rad.S01E01.1080p.BluRay.x264-[YTS.AG].mkv",
@@ -349,6 +356,7 @@ describe("formatting description and name", () => {
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           file(
             "1",
             "The.LongTrain.1999.1080p.BluRay.x264-[YTS.AG].mkv",
@@ -413,6 +421,7 @@ describe("exclude TV episodes when searching for movies - real world examples", 
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           // Should be included: "Part 1" in both title and filename
           file(
             "1",
@@ -459,6 +468,7 @@ describe("exclude TV episodes when searching for movies - real world examples", 
       statusCode: 200,
       body: {
         children: [
+          { name: "status", value: "OK" },
           // Should be included: "Episode" in both title and filename
           file(
             "1",

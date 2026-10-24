@@ -1,3 +1,4 @@
+const { getFailure } = require("../errors");
 const STYLESHEET = `
 * {
 	box-sizing: border-box;
@@ -256,7 +257,10 @@ function landingTemplate(manifest, error, configValues) {
   let errorHTML = "";
 
   if (error) {
-    errorHTML = '<div class="error">Login credentials are incorrect.</div>';
+    const failure = getFailure(
+      error === true ? "invalid_credentials" : error.code,
+    );
+    errorHTML = `<div class="error" role="alert"><strong>${failure.title}</strong><p>${failure.message}</p></div>`;
   }
 
   return `
