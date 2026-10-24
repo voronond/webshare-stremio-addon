@@ -268,8 +268,17 @@ describe("Stream search handler", () => {
     ]);
   });
 
-  it("resturns a single stream for internal catalog items", async () => {
+  it("returns a labelled stream for a playable internal catalog item", async () => {
     webshare.login.mockResolvedValueOnce(wsToken);
+    webshare.getById.mockResolvedValueOnce({
+      name: "Example",
+      filename: "Example.1080p.CZ.mkv",
+      language: "CZ",
+      size: 2000000000,
+      posVotes: 4,
+      negVotes: 1,
+      parsedTitle: { resolution: "1080p", source: "WEB-DL" },
+    });
     const config = encodeURIComponent(
       JSON.stringify({ login, saltedPassword }),
     );
@@ -280,11 +289,20 @@ describe("Stream search handler", () => {
     expect(res.body.streams).toEqual([
       {
         ident: "123",
+        name: "Webshare · 1080p · CZ · 2 GB",
+        description:
+          "Example.1080p.CZ.mkv\n🌐 CZ (inferred from filename)\n👍 4 👎 1\n💾 2 GB",
+        behaviorHints: {
+          filename: "Example.1080p.CZ.mkv",
+          videoSize: 2000000000,
+          bingeGroup: "WebshareStremio|CZ|1080p|WEB-DL",
+        },
         url: `https://20317bf4c6c6-webshare-stremio-addon.baby-beamup.club/getUrl/123?token=${wsToken}`,
       },
     ]);
 
     expect(webshare.login).toHaveBeenCalledWith(login, saltedPassword);
+    expect(webshare.getById).toHaveBeenCalledWith("123", wsToken);
   });
 });
 

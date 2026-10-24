@@ -19,6 +19,9 @@ const {
 } = require("./recovery");
 const installationTemplate = require("./html/installationTemplate");
 const { host, url } = require("./env");
+const { formatStreamPresentation } = require("./streamPresentation");
+const { isPlayableFile } = require("./fileAvailability");
+const { streamUrl } = require("./streamUrl");
 const dev = process.argv.includes("--dev") == 1 ? "Dev" : "";
 
 // Docs: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md
@@ -107,11 +110,14 @@ builder.defineStreamHandler(async function (args) {
     } else if (args.id.startsWith("coffei.webshare:")) {
       const wsId = args.id.substring(16);
       const wsToken = await getToken(args.config || {});
+      const info = await webshare.getById(wsId, wsToken);
+      if (!isPlayableFile(info)) return { streams: [] };
       return {
         streams: [
           {
             ident: wsId,
-            url: url + "getUrl/" + wsId + "?token=" + wsToken,
+            ...formatStreamPresentation(info),
+            url: streamUrl(wsId, wsToken),
           },
         ],
       };
@@ -139,10 +145,10 @@ builder.defineCatalogHandler(async function (args) {
     const wsToken = await getToken(args.config || {});
     const streams = await webshare.directSearch(args.extra.search, wsToken);
     return {
-      metas: streams.map((s) => ({
+      metas: streams.filter(isPlayableFile).map((s) => ({
         id: `coffei.webshare:${s.ident}`,
         name: s.name,
-        poster: s.img,
+        poster: s.img || new URL("mystatic/logo.png", url).toString(),
         type: args.type,
       })),
       cacheMaxAge: 60 * 60 * 1000,
@@ -162,6 +168,7 @@ builder.defineMetaHandler(async function (args) {
       const wsId = args.id.substring(16);
       const wsToken = await getToken(args.config || {});
       const info = await webshare.getById(wsId, wsToken);
+      if (!isPlayableFile(info)) return { meta: {} };
       return Promise.resolve({
         meta: {
           id: args.id,
