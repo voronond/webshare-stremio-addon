@@ -1,5 +1,5 @@
 const { performance } = require("node:perf_hooks");
-const needle = require("needle");
+const { request } = require("./request");
 const md5 = require("nano-md5");
 const sha1 = require("sha1");
 const formencode = require("form-urlencoded");
@@ -216,10 +216,19 @@ const search = async (query, token) => {
     limit: 100,
     wst: token,
   });
-  const resp = await needle("post", "https://webshare.cz/api/search/", data, {
+  const resp = await request("post", "https://webshare.cz/api/search/", data, {
     headers,
   });
-  const files = resp.body.children.filter((el) => el.name == "file");
+  const children = resp.body?.children;
+  if (!Array.isArray(children))
+    throw new Error("Invalid Webshare search response.");
+  const status = children.find((el) => el.name === "status")?.value;
+  if (status && status !== "OK") {
+    const error = new Error("Webshare search is temporarily unavailable.");
+    error.code = status;
+    throw error;
+  }
+  const files = children.filter((el) => el.name == "file");
 
   return files.map((el) => {
     const ident = el.children.find((el) => el.name == "ident").value;
@@ -250,10 +259,11 @@ const search = async (query, token) => {
 
 const webshare = {
   saltPassword: async (user, password) => {
-    const saltResp = await needle(
+    const saltResp = await request(
+      "post",
       "https://webshare.cz/api/salt/",
-      `username_or_email=${user}`,
-      headers,
+      formencode({ username_or_email: user }),
+      { headers },
     );
     const salt = saltResp.body.children.find((el) => el.name == "salt").value;
     return sha1(md5.crypt(password, salt));
@@ -265,12 +275,9 @@ const webshare = {
       password: saltedPassword,
       keep_logged_in: 1,
     });
-    const resp = await needle(
-      "post",
-      "https://webshare.cz/api/login/",
-      data,
+    const resp = await request("post", "https://webshare.cz/api/login/", data, {
       headers,
-    );
+    });
     if (
       resp.statusCode != 200 ||
       resp.body.children.find((el) => el.name == "status").value != "OK"
@@ -285,9 +292,8 @@ const webshare = {
   },
 
   getById: async (id, token) => {
-    await needle("https://webshare.cz/api/file_info");
     const data = formencode({ ident: id, wst: token });
-    const resp = await needle(
+    const resp = await request(
       "post",
       "https://webshare.cz/api/file_info/",
       data,
@@ -343,9 +349,14 @@ const webshare = {
 
     // Get all results from different queries
     const searchStartMs = performance.now();
-    let results = await Promise.all(
+    const searches = await Promise.allSettled(
       queries.map((query) => search(query, token)),
     );
+    const successful = searches.filter(
+      (result) => result.status === "fulfilled",
+    );
+    if (searches.length && !successful.length) throw searches[0].reason;
+    let results = successful.map((result) => result.value);
     const searchDurationMs = Math.round(performance.now() - searchStartMs);
     console.log(`Executing all search queries: ${searchDurationMs}ms`);
 
@@ -374,7 +385,7 @@ const webshare = {
       force_https: 1,
       wst: token,
     });
-    const resp = await needle(
+    const resp = await request(
       "post",
       "https://webshare.cz/api/file_link/",
       data,

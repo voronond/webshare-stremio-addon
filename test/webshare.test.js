@@ -24,6 +24,7 @@ describe("search results are sorted", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file("1", "Morcle man 2024.avi", "600000", "1", "0"),
@@ -49,6 +50,7 @@ describe("search results are sorted", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           // these filename are parsed incorrectly by the parse-torrent-title
@@ -73,6 +75,7 @@ describe("search results are sorted", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file("1", "Miracle man 2024.avi", "600000", "4", "0"),
@@ -96,6 +99,7 @@ describe("search results are sorted", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file("1", "Miracle man 2024.avi", "600000", "4", "0"),
@@ -121,6 +125,7 @@ describe("search results are sorted", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           // these filename are parsed incorrectly by the parse-torrent-title
@@ -172,6 +177,7 @@ describe("formatting description and name", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file(
@@ -264,6 +270,7 @@ describe("formatting description and name", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file(
@@ -339,6 +346,7 @@ describe("formatting description and name", () => {
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           file(
@@ -402,6 +410,7 @@ describe("exclude TV episodes when searching for movies - real world examples", 
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           // Should be included: "Part 1" in both title and filename
@@ -447,6 +456,7 @@ describe("exclude TV episodes when searching for movies - real world examples", 
     };
 
     needle.mockImplementation((method, url, data, headers) => ({
+      statusCode: 200,
       body: {
         children: [
           // Should be included: "Episode" in both title and filename
