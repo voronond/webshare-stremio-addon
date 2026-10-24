@@ -1,6 +1,10 @@
 const needle = require("needle");
 const freekeys = require("freekeys");
-const { findShowInfo, findShowInfoInTmdb } = require("../src/meta");
+const {
+  findShowInfo,
+  findShowInfoInTmdb,
+  clearMetadataCache,
+} = require("../src/meta");
 
 jest.mock("needle");
 jest.mock("freekeys", () => jest.fn());
@@ -14,6 +18,7 @@ const movie = {
 const response = (body) => ({ statusCode: 200, body });
 
 beforeEach(() => {
+  clearMetadataCache();
   jest.resetAllMocks();
   freekeys.mockResolvedValue({ tmdb_key: "test-key" });
 });
@@ -151,4 +156,59 @@ test("malformed Cinemeta data is a service failure rather than no metadata", asy
   await expect(findShowInfo("movie", "tt123")).rejects.toMatchObject({
     code: "service_unavailable",
   });
+});
+
+test("reuses metadata and coalesces simultaneous title lookups", async () => {
+  needle.mockResolvedValue(response({ movie_results: [movie] }));
+  const results = await Promise.all([
+    findShowInfo("movie", "tt123"),
+    findShowInfo("movie", "tt123"),
+  ]);
+  expect(results[0]).toEqual(results[1]);
+  await findShowInfo("movie", "tt123");
+  expect(needle).toHaveBeenCalledTimes(2);
+});
+
+test("does not cache metadata errors or a broken fallback as no results", async () => {
+  needle.mockRejectedValue(new Error("provider offline"));
+  await expect(findShowInfo("movie", "tt123")).rejects.toThrow(
+    "provider offline",
+  );
+  const failedRequests = needle.mock.calls.length;
+  needle.mockResolvedValue(response({ movie_results: [movie] }));
+  await expect(findShowInfo("movie", "tt123")).resolves.toMatchObject({
+    name: "Test movie",
+  });
+  expect(needle.mock.calls.length).toBeGreaterThan(failedRequests);
+});
+
+test("refreshes metadata after five minutes", async () => {
+  jest.useFakeTimers();
+  try {
+    needle.mockResolvedValue(response({ movie_results: [movie] }));
+    await findShowInfo("movie", "tt123");
+    expect(needle).toHaveBeenCalledTimes(2);
+    await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await findShowInfo("movie", "tt123");
+    expect(needle).toHaveBeenCalledTimes(4);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("episode metadata cache keys keep episode identities separate", async () => {
+  needle.mockResolvedValue(
+    response({
+      tv_results: [
+        { name: "A show", original_name: "A show", original_language: "en" },
+      ],
+    }),
+  );
+  expect(await findShowInfo("series", "tt123:1:1")).toMatchObject({
+    episode: "1",
+  });
+  expect(await findShowInfo("series", "tt123:1:2")).toMatchObject({
+    episode: "2",
+  });
+  expect(needle).toHaveBeenCalledTimes(4);
 });

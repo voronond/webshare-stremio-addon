@@ -1,3 +1,5 @@
+const { clearTokenCache } = require("../src/auth");
+beforeEach(() => clearTokenCache());
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
