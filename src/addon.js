@@ -17,6 +17,7 @@ const {
   recoveryUrl,
   helpCode,
 } = require("./recovery");
+const installationTemplate = require("./html/installationTemplate");
 const { host, url } = require("./env");
 const dev = process.argv.includes("--dev") == 1 ? "Dev" : "";
 
@@ -217,12 +218,14 @@ app.get(["/configure", "/"], (req, res) => {
     ? getFailure(req.query.reason)
     : undefined;
   const landingHTML = landingTemplate(manifest, error, {}, req.query.lang);
+  res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
   res.setHeader("content-type", "text/html");
   res.end(landingHTML);
 });
 
-// Finish installation - salt the password and redirect to install/update the plugin
+// Verify credentials and show an installation handoff with a manual fallback.
 app.post("/configure", async (req, res) => {
+  res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
   const { login, password, install } = req.body;
   let salted;
   let token;
@@ -252,11 +255,13 @@ app.post("/configure", async (req, res) => {
     const desktopUrl = `stremio://${host}/${manifestPath}`;
     const webUrl = `https://web.stremio.com/#/addons?addon=${encodeURIComponent(httpManifestUrl)}`;
 
-    if (install === "web") {
-      res.redirect(webUrl);
-    } else {
-      res.redirect(desktopUrl);
-    }
+    const html = installationTemplate(
+      manifest,
+      { httpManifestUrl, desktopUrl, webUrl },
+      req.body.lang,
+      install === "web" ? "web" : "desktop",
+    );
+    res.type("html").send(html);
   } else {
     const landingHTML = landingTemplate(
       manifest,

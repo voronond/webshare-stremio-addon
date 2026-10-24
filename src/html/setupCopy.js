@@ -1,5 +1,22 @@
 const copy = {
   en: {
+    ready: "Your addon is ready",
+    readyDetail:
+      "Your Webshare account was verified. Choose where to install the addon.",
+    openDesktop: "Open Stremio app",
+    openWeb: "Open Stremio Web",
+    finishInstall:
+      "Confirm installation in Stremio, then open a movie or episode and choose a Webshare stream.",
+    manualHeading: "Stremio did not open?",
+    manualInstructions:
+      "Copy the installation link below. In Stremio, open Addons, paste the link into the addon search field, and confirm installation. You can also select the link and copy it manually.",
+    installationLink: "Private installation link",
+    copyLink: "Copy installation link",
+    copying: "Copying the installation link…",
+    copied: "Installation link copied. Paste it into Stremio Addons.",
+    manualCopy:
+      "Automatic copying is unavailable. The link is selected; use your device's Copy action, or press Ctrl+C or Command+C.",
+    backToSetup: "Return to setup",
     language: "Language",
     intro: "Watch movies and series from Webshare in Stremio.",
     heading: "Connect your Webshare account",
@@ -32,6 +49,24 @@ const copy = {
     logo: "Webshare addon logo",
   },
   cs: {
+    ready: "Váš doplněk je připraven",
+    readyDetail:
+      "Účet Webshare byl ověřen. Vyberte, kam chcete doplněk nainstalovat.",
+    openDesktop: "Otevřít aplikaci Stremio",
+    openWeb: "Otevřít Stremio Web",
+    finishInstall:
+      "Ve Stremiu potvrďte instalaci, otevřete film nebo epizodu a vyberte zdroj Webshare.",
+    manualHeading: "Stremio se neotevřelo?",
+    manualInstructions:
+      "Zkopírujte instalační odkaz níže. Ve Stremiu otevřete Doplňky (Addons), vložte odkaz do vyhledávacího pole a potvrďte instalaci. Odkaz můžete také označit a zkopírovat ručně.",
+    installationLink: "Soukromý instalační odkaz",
+    copyLink: "Zkopírovat instalační odkaz",
+    copying: "Kopírujeme instalační odkaz…",
+    copied:
+      "Instalační odkaz byl zkopírován. Vložte jej do Doplňků ve Stremiu.",
+    manualCopy:
+      "Automatické kopírování není dostupné. Odkaz je označen; použijte funkci Kopírovat nebo klávesy Ctrl+C či Command+C.",
+    backToSetup: "Zpět na nastavení",
     language: "Jazyk",
     intro: "Sledujte filmy a seriály z Webshare ve Stremiu.",
     heading: "Připojte svůj účet Webshare",
