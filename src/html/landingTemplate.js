@@ -1,4 +1,5 @@
 const { getCopy, normalizeLanguage, escapeHtml } = require("./setupCopy");
+const { MIN_FILE_SIZE_GB, MAX_FILE_SIZE_GB } = require("../preferences");
 
 function landingTemplate(
   manifest,
@@ -23,11 +24,20 @@ function landingTemplate(
       const title = escapeHtml(text[element.key] || element.title);
       const required = element.required ? " required" : "";
       const hasError = Boolean(
-        credentialsInvalid && ["login", "password"].includes(element.key),
+        error &&
+          (Array.isArray(error.fields)
+            ? error.fields.includes(element.key)
+            : credentialsInvalid &&
+              ["login", "password"].includes(element.key)),
       );
-      const errorAttributes = hasError
-        ? ' aria-invalid="true" aria-describedby="setup-error"'
-        : "";
+      const help = text[`${element.key}Help`];
+      const describedBy = [
+        hasError ? "setup-error" : "",
+        help ? `${element.key}-help` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const fieldAttributes = `${hasError ? ' aria-invalid="true"' : ""}${describedBy ? ` aria-describedby="${escapeHtml(describedBy)}"` : ""}`;
       const value = configValues[element.key] ?? element.default ?? "";
       let control;
       if (["text", "number", "password"].includes(element.type)) {
@@ -38,7 +48,11 @@ function landingTemplate(
               ? ' autocomplete="current-password"'
               : "";
         const inputValue = element.type === "password" ? "" : escapeHtml(value);
-        control = `<input type="${element.type}" id="${key}" name="${key}" value="${inputValue}"${autocomplete}${required}${errorAttributes}>`;
+        const constraints =
+          element.key === "maxFileSizeGb"
+            ? ` min="${MIN_FILE_SIZE_GB}" max="${MAX_FILE_SIZE_GB}" step="any" inputmode="decimal"`
+            : "";
+        control = `<input type="${element.type}" id="${key}" name="${key}" value="${inputValue}"${autocomplete}${required}${constraints}${fieldAttributes}>`;
         if (element.type === "password") {
           control += `<button class="password-toggle secondary" type="button" data-password-target="${key}" data-show="${escapeHtml(text.showPassword)}" data-hide="${escapeHtml(text.hidePassword)}" aria-controls="${key}" aria-pressed="false" hidden>${text.showPassword}</button>`;
         }
@@ -46,13 +60,15 @@ function landingTemplate(
         const selectedValue = String(
           value || element.options?.[0]?.value || element.options?.[0] || "",
         );
-        control = `<select id="${key}" name="${key}"${required}>${(
+        control = `<select id="${key}" name="${key}"${required}${fieldAttributes}>${(
           element.options || []
         )
           .map((option) => {
             const optionValue =
               typeof option === "object" ? option.value : option;
-            const label = typeof option === "object" ? option.label : option;
+            const label =
+              text.preferenceOptions?.[element.key]?.[optionValue] ||
+              (typeof option === "object" ? option.label : option);
             return `<option value="${escapeHtml(optionValue)}"${String(optionValue) === selectedValue ? " selected" : ""}>${escapeHtml(label)}</option>`;
           })
           .join("")}</select>`;
@@ -67,7 +83,7 @@ function landingTemplate(
       } else {
         return "";
       }
-      return `<div class="form-element"><label for="${key}">${title}</label>${control}</div>`;
+      return `<div class="form-element"><label for="${key}">${title}</label>${control}${help ? `<p class="field-help" id="${key}-help">${escapeHtml(help)}</p>` : ""}</div>`;
     })
     .join("");
 
@@ -90,7 +106,7 @@ function landingTemplate(
     <h2>${text.heading}</h2>
     <p class="notice">${text.premium} <a href="https://webshare.cz/">${text.account}</a></p>
     <ol>${text.steps.map((step) => `<li>${step}</li>`).join("")}</ol>
-    ${error ? `<div class="error" id="setup-error" role="alert" tabindex="-1"><p>${escapeHtml(errorMessage)}</p><p>${credentialsInvalid ? text.retry : text.retryService}</p></div>` : ""}
+    ${error ? `<div class="error" id="setup-error" role="alert" tabindex="-1"><p>${escapeHtml(errorMessage)}</p><p>${error.code === "INVALID_PREFERENCES" ? text.preferenceRetry : credentialsInvalid ? text.retry : text.retryService}</p></div>` : ""}
     ${
       fields
         ? `<form id="mainForm" action="/configure" method="POST" data-checking="${escapeHtml(text.checking)}">

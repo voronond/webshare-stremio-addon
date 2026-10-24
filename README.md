@@ -19,6 +19,15 @@ Alternative is to follow the link https://20317bf4c6c6-webshare-stremio-addon.ba
 
 You need to have valid Webshare.cz credentials and a premium account.
 
+During setup you can optionally choose a preferred audio language, maximum resolution,
+and maximum file size (decimal GB). These preferences apply to movie and episode
+stream suggestions. Languages and resolutions are inferred from filenames; audio
+tracks are not verified. Other languages remain available as a fallback, and files
+with unknown resolution or size remain available. Leave the defaults for the
+original ordering and no size or resolution limit. To change preferences, configure
+and install the addon again. Keep installation links private because they contain
+account credentials.
+
 ## Development
 
 Follow the usual steps:

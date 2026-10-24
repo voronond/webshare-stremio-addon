@@ -196,7 +196,11 @@ describe("Stream search handler", () => {
 
     expect(webshare.saltPassword).toHaveBeenCalledWith(login, password);
     expect(webshare.login).toHaveBeenCalledWith(login, saltedPassword);
-    expect(webshare.search).toHaveBeenCalledWith(info, wsToken);
+    expect(webshare.search).toHaveBeenCalledWith(info, wsToken, {
+      preferredLanguage: "any",
+      maxResolution: "any",
+      maxFileSizeGb: null,
+    });
     expect(res.body).toHaveProperty("streams");
     expect(res.body.streams).toEqual(streams);
   });
@@ -215,7 +219,11 @@ describe("Stream search handler", () => {
 
     expect(webshare.saltPassword).not.toHaveBeenCalled();
     expect(webshare.login).toHaveBeenCalledWith(login, saltedPassword);
-    expect(webshare.search).toHaveBeenCalledWith(info, wsToken);
+    expect(webshare.search).toHaveBeenCalledWith(info, wsToken, {
+      preferredLanguage: "any",
+      maxResolution: "any",
+      maxFileSizeGb: null,
+    });
     expect(res.body.streams).toEqual(streams);
   });
 

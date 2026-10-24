@@ -18,6 +18,14 @@ const {
   helpCode,
 } = require("./recovery");
 const installationTemplate = require("./html/installationTemplate");
+const { getCopy } = require("./html/setupCopy");
+const {
+  LANGUAGE_OPTIONS,
+  RESOLUTION_OPTIONS,
+  normalizePreferences,
+  validatePreferences,
+  serializePreferences,
+} = require("./preferences");
 const { host, url } = require("./env");
 const { formatStreamPresentation } = require("./streamPresentation");
 const { isPlayableFile } = require("./fileAvailability");
@@ -59,6 +67,25 @@ const manifest = {
       type: "password",
       title: "Webshare.cz password",
       required: true,
+    },
+    {
+      key: "preferredLanguage",
+      type: "select",
+      title: "Preferred audio language (inferred from filenames)",
+      options: LANGUAGE_OPTIONS,
+      default: "any",
+    },
+    {
+      key: "maxResolution",
+      type: "select",
+      title: "Maximum resolution",
+      options: RESOLUTION_OPTIONS,
+      default: "any",
+    },
+    {
+      key: "maxFileSizeGb",
+      type: "number",
+      title: "Maximum file size in GB (optional)",
     },
   ],
   stremioAddonsConfig: {
@@ -103,7 +130,11 @@ builder.defineStreamHandler(async function (args) {
       const info = await findShowInfo(args.type, args.id);
       if (info) {
         const wsToken = await getToken(args.config || {});
-        const streams = await webshare.search(info, wsToken);
+        const streams = await webshare.search(
+          info,
+          wsToken,
+          normalizePreferences(args.config),
+        );
 
         return { streams: streams };
       }
@@ -126,7 +157,11 @@ builder.defineStreamHandler(async function (args) {
       const info = await findShowInfoInTmdb(args.type, id);
       if (info) {
         const wsToken = await getToken(args.config || {});
-        const streams = await webshare.search(info, wsToken);
+        const streams = await webshare.search(
+          info,
+          wsToken,
+          normalizePreferences(args.config),
+        );
 
         return { streams: streams };
       }
@@ -233,6 +268,25 @@ app.get(["/configure", "/"], (req, res) => {
 // Verify credentials and show an installation handoff with a manual fallback.
 app.post("/configure", async (req, res) => {
   res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
+  const { preferences, invalidFields } = validatePreferences(req.body);
+  if (invalidFields.length) {
+    return res
+      .status(400)
+      .type("html")
+      .send(
+        landingTemplate(
+          manifest,
+          {
+            code: "INVALID_PREFERENCES",
+            message: getCopy(req.body.lang).invalidPreferences,
+            fields: invalidFields,
+          },
+          req.body,
+          req.body.lang,
+          true,
+        ),
+      );
+  }
   const { login, password, install } = req.body;
   let salted;
   let token;
@@ -254,7 +308,11 @@ app.post("/configure", async (req, res) => {
     console.error("Configuration failed:", failure.code);
   }
   if (token) {
-    const config = { login, saltedPassword: salted };
+    const config = {
+      login,
+      saltedPassword: salted,
+      ...serializePreferences(preferences),
+    };
 
     const manifestPath = `${encodeURIComponent(JSON.stringify(config))}/manifest.json`;
     const httpManifestUrl = new URL(manifestPath, url).toString();
