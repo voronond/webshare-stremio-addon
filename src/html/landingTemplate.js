@@ -1,307 +1,112 @@
-const { getFailure } = require("../errors");
-const STYLESHEET = `
-* {
-	box-sizing: border-box;
-}
+const { getCopy, normalizeLanguage, escapeHtml } = require("./setupCopy");
 
-body,
-html {
-	margin: 0;
-	padding: 0;
-	width: 100%;
-	min-height: 100%;
-}
-
-body {
-	padding: 2vh;
-	font-size: 2.2vh;
-}
-
-html {
-	background-size: auto 100%;
-	background-size: cover;
-	background-position: center center;
-	background-repeat: no-repeat;
-	box-shadow: inset 0 0 0 2000px rgb(0 0 0 / 60%);
-}
-
-body {
-	display: flex;
-	font-family: 'Open Sans', Arial, sans-serif;
-	color: white;
-}
-
-h1 {
-	font-size: 4.5vh;
-	font-weight: 700;
-}
-
-h2 {
-	font-size: 2.2vh;
-	font-weight: normal;
-	font-style: italic;
-	opacity: 0.8;
-}
-
-h3 {
-	font-size: 2.2vh;
-}
-
-h1,
-h2,
-h3,
-p {
-	margin: 0;
-	text-shadow: 0 0 1vh rgba(0, 0, 0, 0.15);
-}
-
-p {
-	font-size: 1.75vh;
-}
-
-ul {
-	font-size: 1.75vh;
-	margin: 0;
-	margin-top: 1vh;
-	padding-left: 3vh;
-}
-
-a {
-	color: white
-}
-
-a.install-link {
-	text-decoration: none
-}
-
-button {
-	border: 0;
-	outline: 0;
-	color: white;
-	background: #8A5AAB;
-	padding: 1.2vh 3.5vh;
-	margin: auto;
-	text-align: center;
-	font-family: 'Open Sans', Arial, sans-serif;
-	font-size: 2.2vh;
-	font-weight: 600;
-	cursor: pointer;
-	display: block;
-	box-shadow: 0 0.5vh 1vh rgba(0, 0, 0, 0.2);
-	transition: box-shadow 0.1s ease-in-out;
-}
-
-button:hover {
-	box-shadow: none;
-}
-
-button:active {
-	box-shadow: 0 0 0 0.5vh white inset;
-}
-
-#addon {
-	width: 40vh;
-	margin: auto;
-}
-
-.logo {
-	height: 14vh;
-	width: 14vh;
-	margin: auto;
-	margin-bottom: 3vh;
-}
-
-.logo img {
-	width: 100%;
-}
-
-.name, .version {
-	display: inline-block;
-	vertical-align: top;
-}
-
-.name {
-	line-height: 5vh;
-	margin: 0;
-}
-
-.version {
-	position: relative;
-	line-height: 5vh;
-	opacity: 0.8;
-	margin-bottom: 2vh;
-}
-
-.contact {
-	position: absolute;
-	left: 0;
-	bottom: 4vh;
-	width: 100%;
-	text-align: center;
-}
-
-.contact a {
-	font-size: 1.4vh;
-	font-style: italic;
-}
-
-.separator {
-	margin-bottom: 4vh;
-}
-
-.form-element {
-	margin-bottom: 2vh;
-}
-
-.label-to-top {
-	margin-bottom: 2vh;
-}
-
-.label-to-right {
-	margin-left: 1vh !important;
-}
-
-.full-width {
-	width: 100%;
-}
-
-.error {
-  border: 1px solid red;
-  background-color: lightpink;
-  color: darkred;
-  padding: 2vh 2vh;
-  margin-bottom: 2vh;
-}
-
-.input-error {
-  outline-width: 2px;
-  outline-color: red;
-  outline-style: solid;
-}
-`;
-
-function landingTemplate(manifest, error, configValues) {
-  const background = "https://en.webshare.cz/gfx/bg.jpg";
-  const logo = "/mystatic/logo.png";
-  const contactHTML = manifest.contactEmail
-    ? `<div class="contact">
-			<p>Contact ${manifest.name} creator:</p>
-			<a href="mailto:${manifest.contactEmail}">${manifest.contactEmail}</a>
-		</div>`
-    : "";
-
-  const stylizedTypes = manifest.types.map(
-    (t) => t[0].toUpperCase() + t.slice(1) + (t !== "series" ? "s" : ""),
+function landingTemplate(
+  manifest,
+  error,
+  configValues = {},
+  language = "en",
+  submitted = false,
+) {
+  const lang = normalizeLanguage(language);
+  const text = getCopy(lang);
+  const credentialsInvalid = Boolean(
+    error && (!error.code || error.code === "invalid_credentials"),
   );
-
-  let formHTML = "";
-
-  if ((manifest.config || []).length) {
-    let options = "";
-    manifest.config.forEach((elem) => {
-      const key = elem.key;
-      if (["text", "number", "password"].includes(elem.type)) {
-        const isRequired = elem.required ? " required" : "";
-        const defaultHTML = elem.default ? ` value="${elem.default}"` : "";
-        const defaultValue =
-          elem.type != "password" ? (configValues || {})[key] || "" : "";
-        const inputType = elem.type;
-        const className = `full-width${error ? " input-error" : ""}`;
-        options += `
-				<div class="form-element">
-					<div class="label-to-top">${elem.title}</div>
-					<input type="${inputType}" id="${key}" name="${key}" value="${defaultValue}" class="${className}"${defaultHTML}${isRequired}/>
-				</div>
-				`;
-      } else if (elem.type === "checkbox") {
-        const isChecked = elem.default === "checked" ? " checked" : "";
-        options += `
-				<div class="form-element">
-					<label for="${key}">
-						<input type="checkbox" id="${key}" name="${key}"${isChecked}> <span class="label-to-right">${elem.title}</span>
-					</label>
-				</div>
-				`;
-      } else if (elem.type === "select") {
-        const defaultValue = elem.default || (elem.options || [])[0];
-        options += `<div class="form-element">
-				<div class="label-to-top">${elem.title}</div>
-				<select id="${key}" name="${key}" class="full-width">
-				`;
-        const selections = elem.options || [];
-        selections.forEach((el) => {
-          const isSelected = el === defaultValue ? " selected" : "";
-          options += `<option value="${el}"${isSelected}>${el}</option>`;
-        });
-        options += `</select>
-               </div>
-               `;
+  const errorMessage = error
+    ? typeof error === "string"
+      ? error
+      : text.failures?.[error.code] || error.message || text.credentials
+    : "";
+  const fields = (manifest.config || [])
+    .map((element) => {
+      const key = escapeHtml(element.key);
+      const title = escapeHtml(text[element.key] || element.title);
+      const required = element.required ? " required" : "";
+      const hasError = Boolean(
+        credentialsInvalid && ["login", "password"].includes(element.key),
+      );
+      const errorAttributes = hasError
+        ? ' aria-invalid="true" aria-describedby="setup-error"'
+        : "";
+      const value = configValues[element.key] ?? element.default ?? "";
+      let control;
+      if (["text", "number", "password"].includes(element.type)) {
+        const autocomplete =
+          element.key === "login"
+            ? ' autocomplete="username" autocapitalize="none" spellcheck="false"'
+            : element.type === "password"
+              ? ' autocomplete="current-password"'
+              : "";
+        const inputValue = element.type === "password" ? "" : escapeHtml(value);
+        control = `<input type="${element.type}" id="${key}" name="${key}" value="${inputValue}"${autocomplete}${required}${errorAttributes}>`;
+        if (element.type === "password") {
+          control += `<button class="password-toggle secondary" type="button" data-password-target="${key}" data-show="${escapeHtml(text.showPassword)}" data-hide="${escapeHtml(text.hidePassword)}" aria-controls="${key}" aria-pressed="false" hidden>${text.showPassword}</button>`;
+        }
+      } else if (element.type === "select") {
+        const selectedValue = String(
+          value || element.options?.[0]?.value || element.options?.[0] || "",
+        );
+        control = `<select id="${key}" name="${key}"${required}>${(
+          element.options || []
+        )
+          .map((option) => {
+            const optionValue =
+              typeof option === "object" ? option.value : option;
+            const label = typeof option === "object" ? option.label : option;
+            return `<option value="${escapeHtml(optionValue)}"${String(optionValue) === selectedValue ? " selected" : ""}>${escapeHtml(label)}</option>`;
+          })
+          .join("")}</select>`;
+      } else if (element.type === "checkbox") {
+        const checked = Object.prototype.hasOwnProperty.call(
+          configValues,
+          element.key,
+        )
+          ? Boolean(configValues[element.key])
+          : !submitted && element.default === "checked";
+        return `<div class="form-element checkbox"><input type="checkbox" id="${key}" name="${key}"${checked ? " checked" : ""}${required}><label for="${key}">${title}</label></div>`;
+      } else {
+        return "";
       }
-    });
-    if (options.length) {
-      formHTML = `
-			<form class="pure-form" id="mainForm" action="/configure" method="POST">
-				${options}
+      return `<div class="form-element"><label for="${key}">${title}</label>${control}</div>`;
+    })
+    .join("");
 
-                <div style="display:flex; gap: 1vh; flex-wrap: wrap;">
-                  <button type="submit" name="install" value="desktop">INSTALL</button>
-                  <button style="background-color: grey; color: white;" type="submit" name="install" value="web" formtarget="_blank">INSTALL (Web)</button>
-                </div>
-			</form>
-
-			<div class="separator"></div>
-			`;
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>${escapeHtml(manifest.name)} - Stremio Addon</title>
+  <link rel="icon" href="/mystatic/logo.png" type="image/png">
+  <link rel="stylesheet" href="/mystatic/configure.css">
+  <script src="/mystatic/configure.js" defer></script>
+</head>
+<body>
+  <main id="addon">
+    <nav class="language" aria-label="${text.language}"><a href="/configure?lang=en" lang="en"${lang === "en" ? ' aria-current="page"' : ""}>English</a><a href="/configure?lang=cs" lang="cs"${lang === "cs" ? ' aria-current="page"' : ""}>Čeština</a></nav>
+    <header><img class="logo" src="/mystatic/logo.png" width="80" height="80" alt="${text.logo}"><div><h1>${escapeHtml(manifest.name)}</h1><p class="version">v${escapeHtml(manifest.version || "0.0.0")}</p></div></header>
+    <p>${text.intro}</p>
+    <h2>${text.heading}</h2>
+    <p class="notice">${text.premium} <a href="https://webshare.cz/">${text.account}</a></p>
+    <ol>${text.steps.map((step) => `<li>${step}</li>`).join("")}</ol>
+    ${error ? `<div class="error" id="setup-error" role="alert" tabindex="-1"><p>${escapeHtml(errorMessage)}</p><p>${credentialsInvalid ? text.retry : text.retryService}</p></div>` : ""}
+    ${
+      fields
+        ? `<form id="mainForm" action="/configure" method="POST" data-checking="${escapeHtml(text.checking)}">
+      <input type="hidden" name="lang" value="${lang}">
+      ${fields}
+      <div class="actions"><button type="submit" name="install" value="desktop">${text.desktop}</button><button class="secondary" type="submit" name="install" value="web">${text.web}</button></div>
+      <p id="setup-status" class="status" role="status" aria-live="polite"></p>
+    </form>`
+        : ""
     }
-  }
-
-  let errorHTML = "";
-
-  if (error) {
-    const failure = getFailure(
-      error === true ? "invalid_credentials" : error.code,
-    );
-    errorHTML = `<div class="error" role="alert"><strong>${failure.title}</strong><p>${failure.message}</p></div>`;
-  }
-
-  return `
-	<!DOCTYPE html>
-	<html style="background-image: url(${background});">
-
-	<head>
-		<meta charset="utf-8">
-		<title>${manifest.name} - Stremio Addon</title>
-		<style>${STYLESHEET}</style>
-		<link rel="shortcut icon" href="${logo}" type="image/x-icon">
-		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet">
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous">
-	</head>
-
-	<body>
-		<div id="addon">
-			<div class="logo">
-			<img src="${logo}">
-			</div>
-			<h1 class="name">${manifest.name}</h1>
-			<h2 class="version">v${manifest.version || "0.0.0"}</h2>
-			<h2 class="description">${manifest.description || ""}</h2>
-
-			<div class="separator"></div>
-
-			<h3 class="gives">This addon has more :</h3>
-			<ul>
-			${stylizedTypes.map((t) => `<li>${t}</li>`).join("")}
-			</ul>
-
-			<div class="separator"></div>
-
-            ${errorHTML}
-			${formHTML}
-
-			${contactHTML}
-		</div>
-	</body>
-
-	</html>`;
+    <section class="help" aria-labelledby="help-heading"><h2 id="help-heading">${text.help}</h2><p>${text.noStreams}</p><p>${text.update}</p><a href="https://github.com/voronond/webshare-stremio-addon/issues">${text.report}</a></section>
+    <p class="privacy">${text.privacy}</p>
+    ${manifest.contactEmail ? `<p class="contact"><a href="mailto:${escapeHtml(manifest.contactEmail)}">${escapeHtml(manifest.contactEmail)}</a></p>` : ""}
+  </main>
+</body>
+</html>`;
 }
 
 module.exports = landingTemplate;
